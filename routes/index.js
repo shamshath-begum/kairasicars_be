@@ -4,7 +4,7 @@ const mongoose = require("mongoose");
 const { dbUrl } = require("../config/dbConfig");
 const { AdminModel } = require('../schema/adminSchema');
 const { CustomerModel } = require('../schema/CustomerSchema');
-
+const moment=require("moment")
 const {
   hashPassword,
   hashCompare,
@@ -260,12 +260,23 @@ router.get("/loan-details",async(req,res)=>{
 })
 
 router.get("/loan-details/:customerID",async(req,res)=>{
+  console.log("first")
   try {
-    const customerID=req.params.customerID
-    if(typeof customerID!=="string"){
-      customerID=String(customerID)
+    const {customerID}=req.params
+    console.log(customerID)
+    console.log(typeof customerID)
+
+    if(!customerID || isNaN(Number(customerID))){
+      return res.status(400).send(({
+        error:"Invalid CustomerID"
+      }))
     }
-    let singleLoanDetails=await loanModel.findOne({customerID:customerID})
+    // if(typeof customerID!=="string"){
+    //   customerID=String(customerID)
+    // }
+
+    console.log(Number(customerID))
+    let singleLoanDetails=await loanModel.findOne({customerID:Number(customerID)})
     if(!singleLoanDetails){
       res.status(400).send({
         message:"Loan Details Not Found"
@@ -287,10 +298,34 @@ router.get("/loan-details/:customerID",async(req,res)=>{
 
 router.post("/emi-details",async(req,res)=>{
   try {
-    const{paidDate,loanAmount,name,modeOfPayment,status,paidAmount,actualDueDate,actualEMIAmount,customerID}=req.body
+    const{paidDate,loanAmount,capital,interestAmount,name,modeOfPayment,status,paidAmount,actualDueDate,actualEMIAmount,customerID}=req.body
+    console.log("original paid date",paidDate)
   console.log(req.body)
 
-  let doc=new emiModel({paidDate,loanAmount,name,modeOfPayment,status,paidAmount,actualDueDate,actualEMIAmount,customerID})
+  let formattedDate = moment(paidDate, 'DD-MM-YYYY')
+console.log("formatted date:",formattedDate)
+
+let dateDay = parseInt(formattedDate.format('DD'), 10);
+    console.log('Day of the Date:', dateDay); // Debug: Check extracted day
+  // Format the date to get the day
+ 
+
+
+
+let defaultAmount = 0;
+
+  if(25 > dateDay >= 20){
+    let actualEMIAmountNum=parseFloat(actualEMIAmount)
+    console.log(actualEMIAmountNum)
+  
+  defaultAmount=actualEMIAmountNum*(0.5/100)
+  console.log(defaultAmount)
+  }
+  if(dateDay >=25){
+    defaultAmount=actualEMIAmount*(0.75/100)
+    console.log(defaultAmount)
+  }
+  let doc=new emiModel({paidDate: new Date(formattedDate),capital,interestAmount,loanAmount,name,modeOfPayment,status,paidAmount,actualDueDate,actualEMIAmount,customerID,defaultAmount:defaultAmount})
 console.log(doc)
 await doc.save()
 res.status(201).send({
@@ -346,10 +381,41 @@ router.get("/emi-multiple",async(req,res)=>{
   }
 })
 
-router.get("/getByName/:search",async(req,res)=>{
-  let name=req.params.search
-  console.log("shama",name)
+router.get("/getByName",async(req,res)=>{
+  console.log(req.query)
+  let keyword=req.query.search ? {
 
+  name:{$regex:req.query.search,$options:"i"}
+
+  }
+  :{};
+  
+const customer=await CustomerModel.find(keyword)
+res.status(200).send(customer)
 })
+
+router.get("/capital",async(req,res)=>{
+  try {
+    const {fromDate,toDate}=req.query
+    console.log(fromDate,toDate)
+const capital=await emiModel.find({
+  paidDate:{
+    $gte: new Date(fromDate),
+      $lte: new Date(toDate) 
+  }
+})
+console.log(capital)
+res.status(200).send({message:"Capital Created Successfully",
+  capital
+})
+
+
+
+  } catch (error) {
+    console.log(error)
+  }
+})
+
+
 
 module.exports = router;
