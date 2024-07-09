@@ -102,7 +102,6 @@ router.post(
   "/customer-registration",
   upload.single("image"),
   async (req, res) => {
-    console.log("first");
     console.log("Request body:", req.body);
     //  const{filename}=req.file
     if (!req.file) {
@@ -124,7 +123,8 @@ router.post(
       officeAddress: req.body.officeAddress,
       imgpath: req.file.path,
       position: req.body.position,
-      customerID: req.body.customerID,
+
+      HypothicationNo: req.body.HypothicationNo,
       // documents:req.file.documents,
       profession: req.body.profession,
       landMark: req.body.landMark,
@@ -141,6 +141,28 @@ router.post(
 );
 
 router.get("/customer-details", async (req, res) => {
+  try {
+    const searchQuery = req.query.q;
+    const customers = searchQuery
+      ? await CustomerModel.find({ name: new RegExp(searchQuery, "i") })
+      : await CustomerModel.find({});
+    res.json(customers);
+
+    // let customers = await CustomerModel.find();
+    // res.status(201).send({
+    //   message: "Customer Details",
+    //   customers,
+    // });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      message: "Internal Server Error",
+      error,
+    });
+  }
+});
+
+router.get("/customer-details-fully", async (req, res) => {
   try {
     let customers = await CustomerModel.find();
     res.status(201).send({
@@ -232,7 +254,14 @@ router.delete("/delete/:id", async (req, res) => {
 router.post("/loan-registration", async (req, res) => {
   let {
     name,
-    customerID,
+    chequeNo,
+    vehicleNo,
+    make,
+    model,
+    insuranceExpiry,
+    agreementDate,
+    dueDateOn,
+    HypothicationNo,
     loanAmount,
     rateOfInterest,
     months,
@@ -251,18 +280,19 @@ router.post("/loan-registration", async (req, res) => {
   const Capital = EMI - interestAmount;
   console.log(Capital);
 
-  let startingDate1 = moment(startingDate).format("DD.MM.YYYY");
-  console.log(startingDate1);
-  startingDate = startingDate1;
-  let endingDate1 = moment(endingDate).format("DD.MM.YYYY");
-  console.log(endingDate1);
-  endingDate = endingDate1;
   let doc = new loanModel({
     InterestAmount: interestAmount,
     TotalAmount: totalAmount,
     emiAmount: EMI,
     name: req.body.name,
-    customerID: req.body.customerID,
+    chequeNo: req.body.chequeNo,
+    vehicleNo: req.body.vehicleNo,
+    make: req.body.make,
+    model: req.body.model,
+    insuranceExpiry: req.body.insuranceExpiry,
+    agreementDate: req.body.agreementDate,
+    dueDateOn: req.body.dueDateOn,
+    HypothicationNo: req.body.HypothicationNo,
     loanAmount: req.body.loanAmount,
     rateOfInterest: req.body.rateOfInterest,
     months: req.body.months,
@@ -295,25 +325,25 @@ router.get("/loan-details", async (req, res) => {
   }
 });
 
-router.get("/loan-details/:customerID", async (req, res) => {
+router.get("/loan-details/:HypothicationNo", async (req, res) => {
   console.log("first");
   try {
-    const { customerID } = req.params;
-    console.log(customerID);
-    console.log(typeof customerID);
+    const { HypothicationNo } = req.params;
+    console.log(HypothicationNo);
+    console.log(typeof HypothicationNo);
 
-    if (!customerID || isNaN(Number(customerID))) {
+    if (!HypothicationNo || isNaN(Number(HypothicationNo))) {
       return res.status(400).send({
-        error: "Invalid CustomerID",
+        error: "Invalid HypothicationNo",
       });
     }
-    // if(typeof customerID!=="string"){
-    //   customerID=String(customerID)
+    // if(typeof HypothicationNo!=="string"){
+    //   HypothicationNo=String(HypothicationNo)
     // }
 
-    console.log(Number(customerID));
+    console.log(Number(HypothicationNo));
     let singleLoanDetails = await loanModel.findOne({
-      customerID: Number(customerID),
+      HypothicationNo: Number(HypothicationNo),
     });
     if (!singleLoanDetails) {
       res.status(400).send({
@@ -367,40 +397,38 @@ router.post("/emi-details", async (req, res) => {
       paidAmount,
       actualDueDate,
       actualEMIAmount,
-      customerID,
+
+      HypothicationNo,
     } = req.body;
     console.log("original paid date", paidDate);
-    console.log(req.body);
+    // console.log(req.body);
+    let dateObj = new Date(paidDate);
+    console.log(dateObj);
 
-    let formattedDate = moment(paidDate, "DD-MM-YYYY");
-    console.log("formatted date:", formattedDate);
+    // Extract the day (returns day of the month from 1 to 31)
+    let date = dateObj.getUTCDate();
+    console.log(date);
 
-    let dateDay = parseInt(formattedDate.format("DD"), 10);
-    console.log("Day of the Date:", dateDay); // Debug: Check extracted day
+    // let d = (moment(paidDate).format("DD"), 10);
+    // console.log(d);
+    // let formattedDate = moment(paidDate, "DD-MM-YYYY");
+    // console.log("formatted date:", formattedDate);
+
+    // let dateDay = parseInt(formattedDate.format("DD"), 10);
+    // console.log("Day of the Date:", dateDay); // Debug: Check extracted day
     // Format the date to get the day
 
     let defaultAmount = 0;
-
-    if (25 > dateDay >= 20) {
-      let actualEMIAmountNum = parseFloat(actualEMIAmount);
-      console.log(actualEMIAmountNum);
-
-      defaultAmount = actualEMIAmountNum * (0.5 / 100);
+    if (date > 15 && date <= 20) {
+      defaultAmount = (interestAmount * 0.5) / 100;
       console.log(defaultAmount);
     }
-    if (dateDay >= 25) {
-      defaultAmount = actualEMIAmount * (0.75 / 100);
+    if (20 < date) {
+      defaultAmount = (interestAmount * 0.75) / 100;
       console.log(defaultAmount);
     }
-
-    let actualDueDate1 = moment(actualDueDate).format("DD.MM.YYYY");
-    console.log(actualDueDate1);
-
-    let paidDate1 = moment(paidDate).format("DD.MM.YYYY");
-    console.log(paidDate1);
 
     let doc = new emiModel({
-      // paidDate: new Date(formattedDate),
       paidDate,
       capital,
       interestAmount,
@@ -411,10 +439,11 @@ router.post("/emi-details", async (req, res) => {
       paidAmount,
       actualDueDate,
       actualEMIAmount,
-      customerID,
+
+      HypothicationNo,
       defaultAmount: defaultAmount,
     });
-    console.log(doc);
+    // console.log(doc);
     await doc.save();
     res.status(201).send({
       message: "EMI Created",
@@ -426,19 +455,19 @@ router.post("/emi-details", async (req, res) => {
   }
 });
 
-router.get("/emi-single-customer-view/:customerID", async (req, res) => {
+router.get("/emi-single-customer-view/:HypothicationNo", async (req, res) => {
   try {
-    let customerstr = req.params.customerID;
-    let customerID = parseInt(customerstr, 10);
-    console.log(customerID);
-    // const customerID=req.params.customerID
-    console.log(customerID);
-    if (typeof customerID !== "string") {
-      customerID = String(customerID);
+    let customerstr = req.params.HypothicationNo;
+    let HypothicationNo = parseInt(customerstr, 10);
+    console.log(HypothicationNo);
+    // const HypothicationNo=req.params.HypothicationNo
+    console.log(HypothicationNo);
+    if (typeof HypothicationNo !== "string") {
+      HypothicationNo = String(HypothicationNo);
     }
-    console.log("customerID", customerID);
+    console.log("HypothicationNo", HypothicationNo);
     let SingleCustomerEMIDetails = await emiModel.find({
-      customerID: customerID,
+      HypothicationNo: HypothicationNo,
     });
     console.log(SingleCustomerEMIDetails);
     res.status(201).send({
@@ -482,6 +511,10 @@ router.get("/capital", async (req, res) => {
   try {
     const { fromDate, toDate } = req.query;
     console.log(fromDate, toDate);
+    // let d = moment(fromDate).format("DD.MM.YYYY");
+    // console.log(d);
+    // let startingDate1 = moment(startingDate).format("DD.MM.YYYY");
+
     const capital = await emiModel.find({
       paidDate: {
         $gte: new Date(fromDate),
