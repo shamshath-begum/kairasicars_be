@@ -234,6 +234,40 @@ router.get("/customer-view/:id", async (req, res) => {
   }
 });
 
+router.get("/customer-details/:HypothicationNo", async (req, res) => {
+  try {
+    const { HypothicationNo } = req.params;
+    console.log(HypothicationNo);
+    console.log(typeof HypothicationNo);
+
+    if (!HypothicationNo || isNaN(Number(HypothicationNo))) {
+      return res.status(400).send({
+        error: "Invalid HypothicationNo",
+      });
+    }
+
+    console.log(Number(HypothicationNo));
+    let singleCustomerDetails = await CustomerModel.findOne({
+      HypothicationNo: Number(HypothicationNo),
+    });
+    if (!singleCustomerDetails) {
+      res.status(400).send({
+        message: "Customer Details Not Found",
+      });
+    }
+    res.status(201).send({
+      message: "Single Customer Details",
+      singleCustomerDetails,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      message: "Internal Server Error",
+      error,
+    });
+  }
+});
+
 router.delete("/delete/:id", async (req, res) => {
   try {
     let { id } = req.params;

@@ -17,7 +17,7 @@ const CustomerSchema = new mongoose.Schema(
     HypothicationNo: { type: Number, required: true },
     // residentialAddress:{type:String,required:true} ,
     officeAddress: { type: String, required: true },
-    reference: { type: String, required: true },
+    reference: { type: String, default: "direct" },
     profession: { type: String, required: true },
     imgpath: { type: String, required: true },
     // documents:{type:String,required:true},
